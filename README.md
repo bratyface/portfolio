@@ -3,3 +3,4 @@ Shawarma Risk Game is an interactive web-based game that combines strategy, deci
 -school project
 -used canva, ai graphic tools, mp3 files (yt).
 -copyright@jeinah
+-check game here/sharmarisk.netlify.app
