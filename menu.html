@@ -1276,7 +1276,7 @@ async function joinGame(){
   startGame();
 }
 
-// ── START ────────────────────────────────
+// ── START ─────────
 function startGame(){
   showScreen('screen-game');
   document.getElementById('game-room-label').textContent = `Room: ${roomCode}`;
@@ -1658,21 +1658,24 @@ function buildStatsOverlay(gameData, winner, names, scores, lives) {
   const p0safePicks = scores[0];
   const p1safePicks = scores[1];
   const totalRevealed = p0revealedOnOpp + p1revealedOnOpp;
-
-  function pSafe(bombsLeft, tilesLeft) {
-    if (tilesLeft <= 0) return 0;
-    return Math.max(0, (tilesLeft - bombsLeft) / tilesLeft);
-  }
-
-  function pBomb(bombsLeft, tilesLeft) {
-    if (tilesLeft <= 0) return 0;
-    return Math.min(1, bombsLeft / tilesLeft);
-  }
+  const totalBombsHit = p0bombsHit + p1bombsHit;
+  const actualBombRate = totalRevealed > 0 ? (totalBombsHit / totalRevealed) * 100 : 0;
 
   const pct = (v) => `${(v * 100).toFixed(1)}%`;
 
+  let noteText;
+  if (totalRevealed === 0) {
+    noteText = "No plates checked yet — nothing to compare.";
+  } else if (Math.abs(actualBombRate - 25) < 5) {
+    noteText = `This round landed close to the 25% odds — right in line with the math.`;
+  } else if (actualBombRate > 25) {
+    noteText = `Bombs hit ${actualBombRate.toFixed(1)}% of picks this round — rougher than the 25% base rate, small sample size doing what it does.`;
+  } else {
+    noteText = `Bombs hit only ${actualBombRate.toFixed(1)}% of picks this round — lucky run against the 25% base rate.`;
+  }
+
   const html = `
-  <div class="stats-section-title">1 - THEORETICAL PROBABILITY (FIXED)</div>
+  <div class="stats-section-title">1 - THE ODDS</div>
   <table class="prob-table">
     <thead>
       <tr>
@@ -1704,7 +1707,7 @@ function buildStatsOverlay(gameData, winner, names, scores, lives) {
     </tbody>
   </table>
 
-  <div class="stats-section-title">2 - EXPERIMENTAL RESULTS (FROM GAME)</div>
+  <div class="stats-section-title">2 - HOW THIS ROUND WENT</div>
   <table class="prob-table">
     <thead>
       <tr>
@@ -1734,18 +1737,18 @@ function buildStatsOverlay(gameData, winner, names, scores, lives) {
         <td class="label-cell">Combined</td>
         <td>${totalRevealed}</td>
         <td class="win-cell">${p0safePicks + p1safePicks}</td>
-        <td class="lose-cell">${p0bombsHit + p1bombsHit}</td>
-        <td>${totalRevealed > 0 ? pct((p0bombsHit + p1bombsHit) / totalRevealed) : '-'}</td>
+        <td class="lose-cell">${totalBombsHit}</td>
+        <td>${totalRevealed > 0 ? pct(totalBombsHit / totalRevealed) : '-'}</td>
       </tr>
     </tbody>
   </table>
   <div class="stats-note">
-    The experimental bomb rate (40%) differs from the theoretical 25% due to randomness and the small number of trials.
+    ${noteText}
   </div>
 
-  <div class="stats-section-title">3 - CHANGING PROBABILITY (MODEL / EXAMPLE)</div>
+  <div class="stats-section-title">3 - ODDS AS THE BOARD EMPTIES</div>
   <div class="stats-note" style="margin-top:0; margin-bottom:10px;">
-    Assuming Previous Picks Were Safe
+    If your first few picks are safe, here's how the risk climbs
   </div>
   <table class="prob-table">
     <thead>
@@ -1784,7 +1787,7 @@ function buildStatsOverlay(gameData, winner, names, scores, lives) {
     </tbody>
   </table>
 
-  <div class="stats-section-title">4 - EXPECTED VALUE (FIXED)</div>
+  <div class="stats-section-title">4 - IS A PICK "WORTH IT"?</div>
   <table class="prob-table">
     <thead>
       <tr>
@@ -1810,7 +1813,7 @@ function buildStatsOverlay(gameData, winner, names, scores, lives) {
     </tbody>
   </table>
   <div class="stats-note" style="margin-top:10px;">
-    Expected Value per turn = 0.5
+    On average, a pick is worth +0.5 — the odds favor taking the risk.
   </div>
   `;
 
