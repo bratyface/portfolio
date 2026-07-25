@@ -1,0 +1,1837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Shawarma Risk</title>
+<link rel="icon" href="https://raw.githubusercontent.com/bratyface/portfolio/0f1abbc0ae9a97751efc0c87b1f5b7aa1d5057e7/HELLO%20HI%20HELLO%20(3).png" type="image/png" />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+button, a, input, .tile {
+  touch-action: manipulation;
+}
+
+:root {
+  --bg: #100a02;
+  --panel: rgba(20,12,3,0.82);
+  --gold: #e8a020;
+  --gold2: #f5c842;
+  --cream: #fdf0cc;
+  --p1: #4fb3ff;
+  --p2: #ff5c5c;
+  --safe: #3a9e4f;
+  --bomb: #cc2a2a;
+  --border: #c8820a;
+  --dim: rgba(0,0,0,.82);
+}
+
+html, body { height: 100%; background-color: var(--bg); overscroll-behavior: none; }
+
+body {
+  background: url("https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/1.png") center center / cover no-repeat fixed;
+  color: var(--cream);
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+  opacity: 0;
+  animation: pageFade .45s ease forwards;
+}
+
+body.game-active { background: var(--bg); }
+@keyframes pageFade { from{opacity:0} to{opacity:1} }
+
+/* ── Intro splash ───────────────────── */
+#intro-splash {
+  position: fixed; inset: 0; z-index: 400;
+  display: flex; align-items: center; justify-content: center;
+  background: #000; pointer-events: none;
+  animation: introSplashFade 2.2s ease forwards;
+}
+#intro-splash span {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(14px, 3vw, 24px);
+  color: var(--gold2); text-align: center;
+  text-shadow: 0 0 22px rgba(245,200,66,.35);
+  letter-spacing: 2px;
+  animation: introTextPop 2.2s ease forwards;
+}
+@keyframes introSplashFade { 0%{opacity:0} 12%{opacity:1} 70%{opacity:1} 100%{opacity:0;visibility:hidden} }
+@keyframes introTextPop { 0%{opacity:0;transform:translateY(10px) scale(.96)} 18%{opacity:1;transform:none} 100%{opacity:0;transform:translateY(-6px) scale(1.02)} }
+
+/* ── Music toggle ───────────────────── */
+#volume-panel { position: fixed; top: 14px; right: 16px; z-index: 200; min-width: 132px; }
+#music-toggle {
+  display: block; width: 100%;
+  font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--gold2);
+  cursor: pointer;
+  background: rgba(14,8,2,0.92); border: 2px solid var(--border);
+  border-radius: 4px; padding: 12px 16px; text-align: center; letter-spacing: 1px;
+  backdrop-filter: blur(6px);
+  /* large touch target for mobile */
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease, background .12s ease;
+}
+#music-toggle:hover { transform:scale(1.06); border-color:var(--gold2); box-shadow:0 0 14px rgba(245,200,66,.18); background:rgba(22,12,3,.95); }
+#music-toggle:active { transform:scale(.96); }
+
+/* ── Back / Leave / Change-char btns ── */
+#back-btn { position:fixed; top:14px; left:16px; z-index:200; display:block; cursor:pointer; background:none; border:none; padding:0; text-decoration:none; transition:transform .12s; -webkit-tap-highlight-color:transparent; }
+#back-btn:hover { transform:scale(1.08); }
+#back-btn img { height:52px; width:auto; filter:drop-shadow(0 2px 6px rgba(0,0,0,.7)); image-rendering:pixelated; }
+#back-btn::after {
+  content: 'BACK TO MAIN MENU';
+  position: absolute; top: calc(100% + 10px); left: 50%;
+  transform: translateX(-35%);
+  font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--gold2);
+  background: rgba(14,8,2,.94); border: 2px solid var(--gold); border-radius: 4px;
+  padding: 8px 10px; white-space: nowrap; opacity: 0; pointer-events: none;
+  transition: opacity .12s ease, transform .12s ease;
+}
+#back-btn:hover::after { opacity:1; transform:translateX(-35%) translateY(2px); }
+
+#leave-btn { position:fixed; top:14px; left:16px; z-index:200; display:none; width:auto; margin-top:0; padding:12px 16px; min-width:190px; }
+
+#change-char-btn {
+  position: fixed; top: 14px; left: 92px; z-index: 200;
+  display: none; cursor: pointer; background: none; border: none; padding: 0;
+  transition: transform .12s; -webkit-tap-highlight-color: transparent;
+}
+#change-char-btn:hover { transform: scale(1.08); }
+#change-char-btn img { height:52px; width:auto; filter:drop-shadow(0 2px 6px rgba(0,0,0,.7)); image-rendering:pixelated; display:block; }
+#change-char-btn::after {
+  content: 'CHANGE CHARACTER';
+  position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+  font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--gold2);
+  background: rgba(14,8,2,.94); border: 2px solid var(--gold); border-radius: 4px;
+  padding: 8px 10px; white-space: nowrap; opacity: 0; pointer-events: none;
+  transition: opacity .12s ease, transform .12s ease;
+}
+#change-char-btn:hover::after { opacity:1; transform:translateX(-50%) translateY(2px); }
+
+/* ── Screens ───────────────────────── */
+.screen { display:none; flex-direction:column; align-items:center; width:100%; max-width:1200px; padding:84px 16px 40px; position:relative; z-index:1; animation:fadeIn .25s ease; }
+.screen.active { display:flex; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+/* ── Cards ─────────────────────────── */
+.card { width:100%; max-width:520px; background:var(--panel); border:3px solid var(--border); border-radius:6px; padding:26px 22px; margin-bottom:18px; backdrop-filter:blur(8px); box-shadow:0 8px 32px rgba(0,0,0,.6); }
+.card-title { font-family:'Press Start 2P',monospace; font-size:11px; color:var(--gold); margin-bottom:16px; letter-spacing:1px; display:flex; align-items:center; gap:8px; }
+.card-title img { height:18px; image-rendering:pixelated; }
+
+/* ── Buttons ───────────────────────── */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; font-family:'Press Start 2P',monospace; font-size:11px; padding:12px 20px; background:rgba(46,29,6,.9); color:var(--gold2); border:3px solid var(--gold); cursor:pointer; letter-spacing:1px; transition:background .12s,transform .08s,box-shadow .12s; box-shadow:3px 3px 0 #5a3a00; border-radius:2px; width:100%; text-align:center; margin-top:10px; user-select:none; -webkit-tap-highlight-color:transparent; }
+.btn img { height:18px; image-rendering:pixelated; }
+.btn:hover  { background:rgba(74,46,8,.95); box-shadow:4px 4px 0 #5a3a00; }
+.btn:active { transform:translate(2px,2px); box-shadow:1px 1px 0 #5a3a00; }
+.btn.p1-btn { border-color:var(--p1); color:var(--p1); box-shadow:3px 3px 0 #00304a; }
+.btn.p1-btn:hover { background:rgba(10,34,51,.95); }
+.btn.p2-btn { border-color:var(--p2); color:var(--p2); box-shadow:3px 3px 0 #4a0000; }
+.btn.p2-btn:hover { background:rgba(42,8,8,.95); }
+.btn.safe-btn { border-color:var(--safe); color:#6ddb82; box-shadow:3px 3px 0 #0f3a18; }
+.btn.safe-btn:hover { background:rgba(13,41,20,.95); }
+.btn-row { display:flex; gap:12px; width:100%; }
+.btn-row .btn { flex:1; }
+
+/* ── Input ─────────────────────────── */
+input[type=text] { width:100%; background:rgba(14,8,2,.9); border:3px solid var(--border); color:var(--gold2); font-family:'Press Start 2P',monospace; font-size:15px; padding:12px 14px; letter-spacing:1px; text-align:center; outline:none; margin-top:10px; border-radius:2px; }
+input[type=text]:focus { border-color:var(--gold2); }
+
+/* ── Room code ─────────────────────── */
+.room-code { font-family:'Press Start 2P',monospace; font-size:clamp(28px,10vw,52px); color:var(--gold2); text-align:center; letter-spacing:14px; text-shadow:0 0 24px rgba(245,200,66,.5); margin:10px 0 16px; padding:10px; border:3px dashed var(--border); background:rgba(10,6,0,.85); border-radius:4px; }
+#qr-container { display:flex; justify-content:center; margin:10px 0; }
+#qr-container canvas,#qr-container img { border:6px solid var(--gold); border-radius:4px; image-rendering:pixelated; }
+.status-msg { font-size:17px; text-align:center; margin-top:10px; min-height:22px; color:var(--gold); }
+.status-msg.err { color:#ff7070; }
+.small { font-size:15px; opacity:.75; text-align:center; margin-top:8px; }
+.waiting-dots::after { content:''; animation:dots 1.4s steps(4,end) infinite; }
+@keyframes dots { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} 100%{content:''} }
+
+/* ════════════════════════════════════
+   CHARACTER SELECT
+════════════════════════════════════ */
+#screen-charselect { justify-content: center; min-height: 100vh; }
+.charselect-wrap { display:flex; flex-direction:column; align-items:center; gap:18px; width:100%; max-width:460px; }
+.charselect-title { font-family:'Press Start 2P',monospace; font-size:clamp(11px,2.5vw,16px); color:var(--gold2); text-align:center; text-shadow:0 0 18px rgba(245,200,66,.4); letter-spacing:2px; }
+.char-carousel { width:100%; background:var(--panel); border:3px solid var(--border); border-radius:8px; padding:22px 18px 18px; backdrop-filter:blur(10px); box-shadow:0 8px 32px rgba(0,0,0,.7); display:flex; flex-direction:column; align-items:center; gap:12px; }
+.char-nav { display:flex; align-items:center; justify-content:space-between; width:100%; gap:10px; }
+.char-arrow { font-family:'Press Start 2P',monospace; font-size:16px; background:rgba(46,29,6,.9); border:3px solid var(--gold); color:var(--gold2); padding:10px 16px; cursor:pointer; border-radius:2px; box-shadow:3px 3px 0 #5a3a00; transition:background .1s,transform .08s,box-shadow .1s; user-select:none; flex-shrink:0; min-width:48px; min-height:48px; -webkit-tap-highlight-color:transparent; }
+.char-arrow:hover  { background:rgba(74,46,8,.95); box-shadow:4px 4px 0 #5a3a00; }
+.char-arrow:active { transform:translate(2px,2px); box-shadow:1px 1px 0 #5a3a00; }
+.char-display { display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; }
+.char-portrait { width:clamp(130px,30vw,190px); height:clamp(180px,44vw,280px); object-fit:contain; image-rendering:pixelated; animation:charPop .22s cubic-bezier(.36,1.56,.64,1); filter:drop-shadow(0 0 18px rgba(232,160,32,.35)); }
+@keyframes charPop { from{transform:scale(.88);opacity:.6} to{transform:scale(1);opacity:1} }
+.char-name { font-family:'Press Start 2P',monospace; font-size:15px; color:var(--gold2); text-align:center; letter-spacing:2px; margin-top:4px; }
+.char-dots { display:flex; gap:7px; margin-top:4px; }
+.char-dot { width:8px; height:8px; border-radius:50%; background:rgba(200,130,10,.3); border:2px solid var(--border); transition:background .15s; }
+.char-dot.active { background:var(--gold2); border-color:var(--gold2); }
+.charselect-confirm { width:100%; font-size:12px; margin-top:2px; }
+
+/* ── Scoreboard ────────────────────── */
+#scoreboard { display:flex; width:100%; gap:12px; margin-bottom:12px; }
+.player-score {
+  flex:1;
+  display:flex;
+  align-items:center;
+  gap:16px;
+  background:rgba(18,10,2,.92);
+  border:3px solid var(--border);
+  border-radius:4px;
+  padding:12px 16px;
+  text-align:left;
+  backdrop-filter:blur(6px);
+  position:relative;
+  overflow:visible;
+  min-height:110px;
+}
+.player-score.active-turn { animation:pulse-border .8s ease-in-out infinite alternate; }
+.player-score.p1 { border-color:var(--p1); }
+.player-score.p2 { border-color:var(--p2); }
+@keyframes pulse-border { from{box-shadow:0 0 0 0 rgba(255,255,255,.1)} to{box-shadow:0 0 12px 3px rgba(255,255,255,.25)} }
+.player-score-main { width:84px; flex:0 0 84px; display:flex; align-items:flex-end; justify-content:center; }
+.player-score-info { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; }
+.char-avatar-wrap { position:relative; display:flex; align-items:flex-end; justify-content:center; width:100%; }
+.char-avatar { width:76px; height:76px; object-fit:contain; image-rendering:pixelated; display:block; margin:0 auto; filter:drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
+.player-name-row { display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; }
+.emotion-bubble { position:absolute; top:-28px; left:50%; transform:translateX(-50%); background:rgba(14,8,2,.95); border:2px solid var(--gold); border-radius:10px; padding:3px 7px; font-size:18px; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .15s; z-index:10; }
+.emotion-bubble.show { opacity:1; }
+.emotion-bubble::after { content:''; position:absolute; bottom:-7px; left:50%; transform:translateX(-50%); border:4px solid transparent; border-top-color:var(--gold); }
+.end-chat-bubble { background:rgba(14,8,2,.93); border:2px solid var(--gold2); border-radius:10px; padding:8px 12px; font-size:16px; color:var(--cream); max-width:320px; text-align:center; margin:0 auto 14px; position:relative; line-height:1.4; }
+.end-chat-bubble::before { content:''; position:absolute; top:-8px; left:50%; transform:translateX(-50%); border:5px solid transparent; border-bottom-color:var(--gold2); }
+.player-score .name { font-family:'Press Start 2P',monospace; font-size:11px; line-height:1.3; text-align:center; }
+.player-score.p1 .name { color:var(--p1); }
+.player-score.p2 .name { color:var(--p2); }
+.setup-check {
+  display:none;
+  align-items:center;
+  justify-content:center;
+  min-width:24px;
+  height:24px;
+  padding:0 6px;
+  border:2px solid #7ff0a4;
+  border-radius:999px;
+  background:rgba(14, 44, 22, 0.92);
+  color:#b9ffd0;
+  font-family:'Press Start 2P',monospace;
+  font-size:10px;
+  line-height:1;
+  box-shadow:0 0 10px rgba(127,240,164,.2);
+}
+.setup-check.show { display:inline-flex; }
+.hearts { display:flex; justify-content:center; align-items:center; gap:12px; min-height:40px; flex-wrap:nowrap; }
+.heart-icon { width:34px; height:34px; object-fit:contain; image-rendering:pixelated; }
+.score-text { font-size:18px; color:var(--gold); text-align:center; }
+
+/* ── Turn banner ────────────────────── */
+#turn-banner { width:100%; background:var(--panel); border:3px solid var(--border); border-radius:4px; text-align:center; padding:10px; font-family:'Press Start 2P',monospace; font-size:10px; margin-bottom:14px; min-height:40px; backdrop-filter:blur(6px); }
+
+/* ── Turn popup ─────────────────────── */
+#turn-popup {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  z-index: 90;
+}
+#turn-popup.show {
+  animation: turnPopupFlash 1s ease forwards;
+}
+#turn-popup-text {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(22px, 8vw, 58px);
+  line-height: 1.2;
+  text-align: center;
+  color: #fff2bf;
+  text-shadow:
+    0 0 12px rgba(245, 200, 66, 0.65),
+    0 0 28px rgba(232, 160, 32, 0.4),
+    4px 4px 0 rgba(34, 16, 3, 0.95);
+}
+@keyframes turnPopupFlash {
+  0%   { opacity: 0; visibility: visible; transform: scale(0.84); }
+  18%  { opacity: 1; visibility: visible; transform: scale(1.02); }
+  78%  { opacity: 1; visibility: visible; transform: scale(1); }
+  100% { opacity: 0; visibility: hidden; transform: scale(1.08); }
+}
+
+/* ── Game BG ────────────────────────── */
+#game-bg-img { position:fixed; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; display:none; opacity:.22; pointer-events:none; }
+
+/* ── Boards ─────────────────────────── */
+.boards { display:grid; grid-template-columns:1fr 1fr; gap:14px; width:100%; }
+.board-card { background:var(--panel); border:3px solid var(--border); border-radius:4px; padding:14px; backdrop-filter:blur(6px); }
+.board-title { font-family:'Press Start 2P',monospace; font-size:10px; margin-bottom:10px; text-align:center; }
+.board-sub { text-align:center; font-size:16px; color:var(--gold); opacity:.85; margin-bottom:12px; min-height:20px; }
+.board-surface { width:100%; max-width:640px; aspect-ratio:859/475; margin:0 auto; position:relative; background-image:url("https://raw.githubusercontent.com/bratyface/portfolio/main/4.png"); background-size:contain; background-repeat:no-repeat; background-position:center; }
+.grid { position:absolute; inset:0; width:100%; height:100%; }
+.tile { position:absolute; width:18%; aspect-ratio:1.2/1; background:transparent; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; transform:translate(-50%,-50%); transition:transform .12s ease,opacity .12s ease; }
+.tile:hover:not(.revealed-safe):not(.revealed-bomb):not(.disabled) { transform:translate(-50%,-50%) scale(1.06); }
+.tile.disabled { cursor:not-allowed; opacity:.85; }
+.tile.picking { animation:choosingPulse .7s infinite alternate; }
+@keyframes choosingPulse { from{transform:translate(-50%,-50%) scale(1)} to{transform:translate(-50%,-50%) scale(1.07)} }
+.tile-icon { width:125%; height:auto; object-fit:contain; pointer-events:none; image-rendering:pixelated; }
+.tile.revealed-safe-owned .tile-icon { opacity:.55; filter:grayscale(.18); }
+.tile.revealed-safe-owned::after { content:'CHECKED'; position:absolute; bottom:-8%; left:50%; transform:translateX(-50%); font-family:'Press Start 2P',monospace; font-size:7px; color:#ffe9a8; background:rgba(24,12,2,.9); border:2px solid #ffe9a8; border-radius:3px; padding:3px 5px; white-space:nowrap; pointer-events:none; }
+.tile-label,.tile-result { display:none; }
+
+#my-tile-0,#opp-tile-0   { left:27%;top:23%; }
+#my-tile-1,#opp-tile-1   { left:43%;top:23%; }
+#my-tile-2,#opp-tile-2   { left:59%;top:23%; }
+#my-tile-3,#opp-tile-3   { left:74%;top:23%; }
+#my-tile-4,#opp-tile-4   { left:27%;top:46%; }
+#my-tile-5,#opp-tile-5   { left:43%;top:46%; }
+#my-tile-6,#opp-tile-6   { left:59%;top:46%; }
+#my-tile-7,#opp-tile-7   { left:74%;top:46%; }
+#my-tile-8,#opp-tile-8   { left:27%;top:69%; }
+#my-tile-9,#opp-tile-9   { left:43%;top:69%; }
+#my-tile-10,#opp-tile-10 { left:59%;top:69%; }
+#my-tile-11,#opp-tile-11 { left:74%;top:69%; }
+
+/* ── End overlay ────────────────────── */
+#end-overlay { display:none; position:fixed; inset:0; background:var(--dim); z-index:100; align-items:center; justify-content:center; padding:20px; }
+#end-overlay.active { display:flex; }
+.end-box { background:rgba(14,8,2,.96); border:4px solid var(--gold); border-radius:6px; padding:30px 24px; text-align:center; max-width:460px; width:100%; backdrop-filter:blur(10px); }
+.end-box h2 { font-family:'Press Start 2P',monospace; font-size:clamp(14px,4vw,20px); margin-bottom:14px; }
+.end-box .final-score { font-size:22px; color:var(--gold); margin-bottom:10px; }
+.end-box .reason { font-size:20px; color:var(--cream); opacity:.9; margin-bottom:14px; }
+.mega-shawarma-popup {
+  display:none;
+  margin:0 auto 18px;
+  width:min(220px, 68vw);
+  padding:14px 12px 10px;
+  border:3px solid var(--gold2);
+  border-radius:10px;
+  background:rgba(33,20,4,.96);
+  box-shadow:0 0 0 3px rgba(255,210,122,.12), 0 0 28px rgba(255,180,48,.24);
+  animation:pulse-border .8s ease-in-out infinite alternate;
+}
+.mega-shawarma-popup.show { display:block; }
+.mega-shawarma-popup img {
+  display:block;
+  width:100%;
+  max-width:132px;
+  margin:0 auto 8px;
+  image-rendering:pixelated;
+}
+.mega-shawarma-popup span {
+  display:block;
+  font-family:'Press Start 2P',monospace;
+  font-size:clamp(8px,1.8vw,10px);
+  line-height:1.7;
+  color:var(--gold2);
+}
+.end-char-row { display:flex; justify-content:center; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
+.end-char-box { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.end-char-box img { width:52px; height:52px; object-fit:contain; image-rendering:pixelated; }
+.end-char-box .end-char-name { font-family:'Press Start 2P',monospace; font-size:7px; color:var(--gold); }
+
+@keyframes mega-popup-bounce {
+  0%   { transform:translateY(16px) scale(.88); opacity:0; }
+  65%  { transform:translateY(-6px) scale(1.04); opacity:1; }
+  100% { transform:translateY(0) scale(1); opacity:1; }
+}
+
+/* ── Stats overlay ──────────────────── */
+#stats-overlay {
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:120;
+  background:rgba(0,0,0,.92);
+  padding:18px;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+#stats-overlay.active { display:flex; }
+
+.stats-box {
+  background:rgba(14,8,2,.97);
+  border:4px solid var(--gold);
+  border-radius:6px;
+  padding:22px 18px 26px;
+  width:100%;
+  max-width:680px;
+  margin:auto;
+  backdrop-filter:blur(10px);
+}
+
+.stats-box h2 {
+  font-family:'Press Start 2P',monospace;
+  font-size:clamp(11px,2.8vw,16px);
+  color:var(--gold2);
+  text-align:center;
+  margin-bottom:20px;
+  letter-spacing:1px;
+}
+
+.stats-section-title {
+  font-family:'Press Start 2P',monospace;
+  font-size:clamp(8px,1.8vw,11px);
+  color:var(--gold);
+  margin:18px 0 8px;
+  letter-spacing:1px;
+  border-left:4px solid var(--gold);
+  padding-left:8px;
+  text-align:left;
+}
+
+.prob-table {
+  width:100%;
+  border-collapse:collapse;
+  font-family:'VT323',monospace;
+  font-size:clamp(14px,3.2vw,18px);
+  margin-bottom:6px;
+}
+
+.prob-table th {
+  font-family:'Press Start 2P',monospace;
+  font-size:clamp(7px,1.4vw,9px);
+  color:var(--gold2);
+  background:rgba(232,160,32,.12);
+  border:2px solid var(--border);
+  padding:7px 6px;
+  text-align:center;
+  letter-spacing:.5px;
+}
+
+.prob-table td {
+  border:2px solid rgba(200,130,10,.35);
+  padding:6px 8px;
+  text-align:center;
+  color:var(--cream);
+  vertical-align:middle;
+}
+
+.prob-table tr:nth-child(even) td { background:rgba(255,255,255,.03); }
+.prob-table td.label-cell {
+  text-align:left;
+  color:var(--gold);
+  font-family:'Press Start 2P',monospace;
+  font-size:clamp(7px,1.4vw,9px);
+  letter-spacing:.5px;
+}
+.prob-table td.highlight { color:var(--gold2); font-weight:bold; }
+.prob-table td.win-cell { color:#6ddb82; }
+.prob-table td.lose-cell { color:#ff6666; }
+
+.ev-bar-wrap {
+  width:100%;
+  background:rgba(255,255,255,.07);
+  border:2px solid var(--border);
+  border-radius:3px;
+  height:20px;
+  margin-top:6px;
+  overflow:hidden;
+  position:relative;
+}
+.ev-bar-fill {
+  height:100%;
+  background:linear-gradient(90deg, var(--gold2), var(--gold));
+  border-radius:2px;
+  transition:width .6s ease;
+}
+.ev-bar-label {
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:'Press Start 2P',monospace;
+  font-size:8px;
+  color:#000;
+  mix-blend-mode:multiply;
+}
+
+.stats-note {
+  font-size:13px;
+  color:var(--cream);
+  opacity:.7;
+  text-align:center;
+  margin-top:14px;
+  line-height:1.5;
+}
+
+/* ── How to play link ───────────────── */
+.how-to-play-link {
+  display: inline-block;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--gold2);
+  text-decoration: none;
+  border-bottom: 2px dashed var(--gold);
+  padding-bottom: 2px;
+  margin-top: 14px;
+  letter-spacing: 1px;
+  transition: color .12s, border-color .12s;
+}
+.how-to-play-link:hover { color: #fff; border-color: #fff; }
+
+@media (max-width:900px) { .boards{grid-template-columns:1fr} }
+@media (max-width:760px) {
+  #scoreboard { flex-direction:column; }
+}
+@media (max-width:420px) {
+  .btn{font-size:9px;padding:10px 12px}
+  input[type=text]{font-size:16px}
+  .room-code{font-size:26px;letter-spacing:8px}
+  .player-score{gap:12px;padding:10px 12px;min-height:96px}
+  .player-score-main{width:68px;flex-basis:68px}
+  .char-avatar{width:62px;height:62px}
+  .player-score .name{font-size:9px}
+  .setup-check{min-width:20px;height:20px;font-size:8px;padding:0 5px}
+  .hearts{gap:8px;min-height:34px}
+  .heart-icon{width:28px;height:28px}
+  .score-text{font-size:15px}
+  .stats-box{padding:18px 12px 22px}
+  .stats-note{font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<div id="intro-splash"><span>All rights reserved. Jeina.</span></div>
+<img id="game-bg-img" src="https://raw.githubusercontent.com/bratyface/portfolio/983de20730c0d790a587f1c3820c74bdd2513f0e/HELLO%20HI%20HELLO.jpg" alt="">
+
+<!-- Music toggle -->
+<div id="volume-panel">
+  <button id="music-toggle" onclick="handleMusicToggle()">🎵 MUSIC ON</button>
+</div>
+
+<!-- Back / leave / change char -->
+<a id="back-btn" href="index.html?skipIntro=1" aria-label="Back to main menu">
+  <img src="https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/7.png" alt="Menu">
+</a>
+<button id="change-char-btn" onclick="showCharSelect()" title="Change character">
+  <img src="https://raw.githubusercontent.com/bratyface/portfolio/6413c5676ff3426ae1162fa1f936f709cb454396/HELLO%20HI%20HELLO%20(2).png" alt="Change character">
+</button>
+<button class="btn p2-btn" id="leave-btn" onclick="leaveMatch()">🚪 Leave Match</button>
+
+<!-- ════ SCREEN — CHARACTER SELECT ════ -->
+<div class="screen active" id="screen-charselect">
+  <div class="charselect-wrap">
+    <div class="charselect-title">CHOOSE YOUR CHARACTER</div>
+    <div class="char-carousel">
+      <div class="char-nav">
+        <button class="char-arrow" onclick="charMove(-1)">◀</button>
+        <div class="char-display">
+          <img id="char-portrait" class="char-portrait" src="" alt="">
+          <div id="char-name" class="char-name"></div>
+          <div class="char-dots" id="char-dots"></div>
+        </div>
+        <button class="char-arrow" onclick="charMove(1)">▶</button>
+      </div>
+      <button class="btn safe-btn charselect-confirm" onclick="confirmChar()">
+        ✅ Select Character
+      </button>
+    </div>
+    <p class="small">· Pick your fighter</p>
+  </div>
+</div>
+
+<!-- ════ SCREEN — LOBBY ════ -->
+<div class="screen" id="screen-lobby">
+  <div class="card">
+    <div class="card-title">
+      <img src="https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/2.png" alt="">
+      SHAWARMA RISK
+    </div>
+
+    <!-- character preview — portrait only, no character name shown here -->
+    <div style="display:flex;align-items:center;justify-content:center;margin-bottom:12px;" id="lobby-char-preview">
+      <img id="lobby-char-img" src="" alt="" style="height:72px;image-rendering:pixelated;">
+    </div>
+
+    <input type="text" id="player-name" maxlength="10" placeholder="ENTER YOUR NAME"
+           oninput="this.value=this.value.replace(/[^a-zA-Z0-9 ]/g,'').slice(0,10)">
+
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn p1-btn" onclick="showCreate()">
+        <img src="https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/2.png" alt="">
+        Create Game
+      </button>
+      <button class="btn p2-btn" onclick="showJoin()">
+        <img src="https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/6.png" alt="">
+        Join Game
+      </button>
+    </div>
+
+    <div style="text-align:center;">
+      <a href="tutorial.html" class="how-to-play-link">
+        📖 HOW TO PLAY
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ════ SCREEN — CREATE ════ -->
+<div class="screen" id="screen-create">
+  <div class="card" style="margin-top:30px">
+    <div class="card-title">
+      <img src="https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/2.png" alt="">
+      YOUR ROOM CODE
+    </div>
+    <div class="room-code" id="display-code">----</div>
+    <div id="qr-container"></div>
+    <p class="status-msg" id="create-status"><span class="waiting-dots">Waiting for opponent</span></p>
+    <p class="small" style="margin-top:10px">Share the code OR let your friend scan the QR</p>
+    <button class="btn" onclick="goLobby()">
+      <img src="https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/7.png" alt="">Back
+    </button>
+  </div>
+</div>
+
+<!-- ════ SCREEN — JOIN ════ -->
+<div class="screen" id="screen-join">
+  <div class="card" style="margin-top:30px">
+    <div class="card-title">
+      <img src="https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/6.png" alt="">
+      ENTER ROOM CODE
+    </div>
+    <input type="text" id="join-input" maxlength="4" placeholder="ABCD"
+           oninput="this.value=this.value.toUpperCase().replace(/[^A-Z]/g,'')"
+           onkeydown="if(event.key==='Enter')joinGame()">
+    <button class="btn safe-btn" onclick="joinGame()" style="margin-top:14px">Join →</button>
+    <button class="btn" onclick="goLobby()">
+      <img src="https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/7.png" alt="">Back
+    </button>
+    <p class="status-msg err" id="join-error"></p>
+  </div>
+  <div class="card">
+    <div class="card-title">
+      <img src="https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/6.png" alt="">
+      SCAN QR CODE
+    </div>
+    <p style="font-size:18px;opacity:.7;text-align:center">Ask your friend to show their QR, then scan with your phone camera.</p>
+  </div>
+</div>
+
+<!-- ════ SCREEN — GAME ════ -->
+<div class="screen" id="screen-game">
+  <div id="scoreboard">
+    <div class="player-score p1" id="p1-card">
+      <div class="player-score-main">
+        <div class="char-avatar-wrap">
+          <img class="char-avatar" id="p1-avatar" src="" alt="">
+          <div class="emotion-bubble" id="p1-bubble"></div>
+        </div>
+      </div>
+      <div class="player-score-info">
+        <div class="player-name-row">
+          <div class="name" id="p1-name">PLAYER 1</div>
+          <div class="setup-check" id="p1-ready-check" aria-label="Bombs locked in">✓</div>
+        </div>
+        <div class="hearts" id="p1-hearts"></div>
+        <div class="score-text" id="p1-score">Safe: 0</div>
+      </div>
+    </div>
+    <div class="player-score p2" id="p2-card">
+      <div class="player-score-main">
+        <div class="char-avatar-wrap">
+          <img class="char-avatar" id="p2-avatar" src="" alt="">
+          <div class="emotion-bubble" id="p2-bubble"></div>
+        </div>
+      </div>
+      <div class="player-score-info">
+        <div class="player-name-row">
+          <div class="name" id="p2-name">PLAYER 2</div>
+          <div class="setup-check" id="p2-ready-check" aria-label="Bombs locked in">✓</div>
+        </div>
+        <div class="hearts" id="p2-hearts"></div>
+        <div class="score-text" id="p2-score">Safe: 0</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="turn-banner">Loading<span class="waiting-dots"></span></div>
+  <div id="turn-popup" aria-hidden="true">
+    <div id="turn-popup-text">YOUR TURN</div>
+  </div>
+
+  <div class="boards">
+    <div class="board-card">
+      <div class="board-title" id="my-board-title">YOUR BOARD</div>
+      <div class="board-sub" id="my-board-sub">Place your 3 bombs.</div>
+      <div class="board-surface"><div class="grid" id="my-grid"></div></div>
+    </div>
+    <div class="board-card">
+      <div class="board-title" id="opp-board-title">OPPONENT BOARD</div>
+      <div class="board-sub" id="opp-board-sub">Wait until both players finish setup.</div>
+      <div class="board-surface"><div class="grid" id="opp-grid"></div></div>
+    </div>
+  </div>
+
+  <button class="btn safe-btn" id="ready-btn" onclick="confirmBombs()" style="max-width:320px;display:none;margin-top:14px;">
+    <img src="https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/2.png" alt="">
+    Lock In Bombs
+  </button>
+  <p class="small" id="game-room-label"></p>
+</div>
+
+<!-- ════ END OVERLAY ════ -->
+<div id="end-overlay">
+  <div class="end-box">
+    <h2 id="end-title">GAME OVER</h2>
+    <div class="mega-shawarma-popup" id="mega-shawarma-popup" aria-hidden="true">
+      <img src="https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/2.png" alt="Mega shawarma prize">
+      <span>MEGA SHAWARMA UNLOCKED</span>
+    </div>
+    <div class="end-char-row" id="end-char-row"></div>
+    <div class="end-chat-bubble" id="end-chat-bubble"></div>
+    <div class="final-score" id="end-score"></div>
+    <div class="reason" id="end-reason"></div>
+    <button class="btn safe-btn" onclick="openStats()" style="margin-top:10px;">
+      View Probability Stats
+    </button>
+    <button class="btn" onclick="goLobby()">
+      <img src="https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/7.png" alt="">Main Menu
+    </button>
+  </div>
+</div>
+
+<div id="stats-overlay">
+  <div class="stats-box">
+    <h2>GAME PROBABILITY STATS</h2>
+    <div id="stats-content"></div>
+    <button class="btn" onclick="closeStats()" style="margin-top:18px;">
+      Back To Results
+    </button>
+  </div>
+</div>
+
+<!-- ════ FIREBASE ════ -->
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDKBTD_lcQR9asR3yhN-TmHGZrbe_A8OSE",
+  authDomain: "shawarma-risk.firebaseapp.com",
+  projectId: "shawarma-risk",
+  storageBucket: "shawarma-risk.firebasestorage.app",
+  messagingSenderId: "694784658078",
+  appId: "1:694784658078:web:f948452e1c56a33b73098f"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+</script>
+
+<!-- ════ AUDIO ════ -->
+<script>
+/*
+  ── VOLUME DEFAULTS (0.0 – 1.0) ─────────────────
+  Edit these to change starting volume of each channel.
+*/
+const VOL = {
+  hover: 0.25, click: 0.40, countdown: 0.40,
+  bomb: 0.60,  safe: 0.50,  win: 0.55,
+  lose: 0.55,  damaged: 0.55,
+  intro: 0.35, game: 0.075
+};
+
+function rawGH(p){ return `https://raw.githubusercontent.com/bratyface/portfolio/${p}`; }
+
+const SRC = {
+  hover:     rawGH('8c081662f269ea0d945915d2b77b8129ccb6936a/hover.MP3'),
+  click:     rawGH('8c081662f269ea0d945915d2b77b8129ccb6936a/click.MP3'),
+  countdown: rawGH('9efd5ed3accb457fb58421080978d3b515631d6c/timer.MP3'),
+  bomb:      rawGH('8c081662f269ea0d945915d2b77b8129ccb6936a/bomb.MP3'),
+  safe:      rawGH('8c081662f269ea0d945915d2b77b8129ccb6936a/safe.MP3'),
+  win:       rawGH('9efd5ed3accb457fb58421080978d3b515631d6c/win.MP3'),
+  lose:      rawGH('9efd5ed3accb457fb58421080978d3b515631d6c/lose.MP3'),
+  damaged:   rawGH('9efd5ed3accb457fb58421080978d3b515631d6c/damaged.MP3'),
+  intro:     'https://raw.githubusercontent.com/bratyface/portfolio/5dcc336ec400498e47f90447ae38bc5db7ac132f/Hello%2C%20its%20Me!.mp3',
+  game:      'https://raw.githubusercontent.com/bratyface/portfolio/fbddf2b2690d01964191c467c600376bb1a497db/Vibe%20Mountain%20-%20Operatic%203%20%E2%99%AB%20NO%20COPYRIGHT%208-bit%20Music.mp3'
+};
+
+// SFX
+const SFX_BASE = {};
+['hover','click','countdown','bomb','safe','win','lose','damaged'].forEach(k => {
+  SFX_BASE[k] = new Audio(SRC[k]);
+  SFX_BASE[k].volume = VOL[k];
+  SFX_BASE[k].preload = 'auto';
+});
+
+// BGM
+const BGM = {
+  intro: new Audio(SRC.intro),
+  game:  new Audio(SRC.game)
+};
+BGM.intro.loop = true; BGM.intro.volume = VOL.intro;
+BGM.game.loop  = true; BGM.game.volume  = VOL.game;
+
+let currentBGM  = null;
+let bgmUnlocked = false;
+let musicMuted  = false;
+
+function applyMusicState() {
+  BGM.intro.volume = musicMuted ? 0 : VOL.intro;
+  BGM.game.volume  = musicMuted ? 0 : VOL.game;
+  const t = document.getElementById('music-toggle');
+  if (t) t.textContent = musicMuted ? '🔇 MUSIC OFF' : '🎵 MUSIC ON';
+}
+
+/*
+  handleMusicToggle — called by the button.
+  On mobile the first tap also unlocks the AudioContext,
+  so we do both unlock + toggle in one gesture.
+*/
+function handleMusicToggle() {
+  // Unlock audio context on first interaction
+  if (!bgmUnlocked) {
+    bgmUnlocked = true;
+    applyMusicState();
+    if (currentBGM && BGM[currentBGM]) {
+      BGM[currentBGM].play().catch(() => {});
+    }
+    // After unlocking, treat first tap as "music is now ON" — don't mute
+    applyMusicState();
+    return;
+  }
+  // Already unlocked → toggle mute
+  musicMuted = !musicMuted;
+  applyMusicState();
+  // If un-muting and a track should be playing, resume it
+  if (!musicMuted && currentBGM && BGM[currentBGM]) {
+    BGM[currentBGM].play().catch(() => {});
+  } else if (musicMuted && currentBGM && BGM[currentBGM]) {
+    BGM[currentBGM].pause();
+  }
+}
+
+function playBGM(name) {
+  if (currentBGM === name) return;
+  Object.values(BGM).forEach(b => { b.pause(); b.currentTime = 0; });
+  currentBGM = name;
+  if (name && BGM[name] && bgmUnlocked && !musicMuted) {
+    BGM[name].play().catch(() => {});
+  }
+}
+
+function playSFX(name) {
+  if (!SFX_BASE[name]) return;
+  const c = SFX_BASE[name].cloneNode();
+  c.volume = VOL[name];
+  c.play().catch(() => {});
+}
+
+/*
+  Unlock BGM on ANY user gesture (touch or click anywhere).
+  This handles Netlify / mobile browsers where autoplay is blocked.
+  We only try to start the BGM once.
+*/
+function unlockAndPlay(e) {
+  if (e?.target?.closest('#music-toggle')) return;
+  if (bgmUnlocked) return;
+  bgmUnlocked = true;
+  applyMusicState();
+  if (currentBGM && BGM[currentBGM] && !musicMuted) {
+    BGM[currentBGM].play().catch(() => {});
+  }
+}
+
+document.addEventListener('touchstart', unlockAndPlay, { once: true, passive: true });
+document.addEventListener('touchend',   unlockAndPlay, { once: true, passive: true });
+document.addEventListener('click',      unlockAndPlay, { once: true });
+document.addEventListener('keydown',    unlockAndPlay, { once: true });
+
+// Hover SFX
+let lastHoverTarget = null;
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest('#back-btn,button,.tile:not(.disabled):not(.revealed-safe):not(.revealed-bomb)');
+  if (el && el !== lastHoverTarget) { lastHoverTarget = el; playSFX('hover'); }
+});
+document.addEventListener('mouseleave', () => { lastHoverTarget = null; }, true);
+
+// Click SFX
+document.addEventListener('click', e => {
+  if (!e.target.closest('#back-btn,button,.tile:not(.disabled)')) return;
+  playSFX('click');
+}, true);
+
+currentBGM = 'intro';
+applyMusicState();
+
+// Try autoplay on load (works on desktop, silently fails on mobile — gesture handlers above pick it up)
+window.addEventListener('load', () => {
+  if (currentBGM && BGM[currentBGM]) {
+    BGM[currentBGM].play().then(() => { bgmUnlocked = true; }).catch(() => {});
+  }
+});
+</script>
+
+<!-- ════ CHARACTER DATA ════ -->
+<script>
+const CHARACTERS = [
+  {
+    id: 'aldrin', name: 'Drin',
+    selectImg: 'https://raw.githubusercontent.com/bratyface/portfolio/bbe9f30f4782db97d5bb755e5f7ce27a837e2ab0/13.png',
+    avatarImg: 'https://raw.githubusercontent.com/bratyface/portfolio/main/11.png',
+    winLines: [
+      "Calculated every move. You never had a chance.",
+      "The odds were always in my favor. GG.",
+      "I studied the board. You studied nothing.",
+      "Risk analysis: complete. You: defeated.",
+      "Fortune favors the prepared. I was very prepared."
+    ],
+    loseLines: [
+      "My calculations were… off. By a lot.",
+      "This was a statistical anomaly. That's my story.",
+      "The bomb was in a 3% chance spot. I found it.",
+      "Even geniuses miscalculate sometimes. Today was that day.",
+      "I'll need to revise my strategy. Significantly."
+    ]
+  },
+  {
+    id: 'khalel', name: 'Kahel',
+    selectImg: 'https://raw.githubusercontent.com/bratyface/portfolio/bbe9f30f4782db97d5bb755e5f7ce27a837e2ab0/12.png',
+    avatarImg: 'https://raw.githubusercontent.com/bratyface/portfolio/cd9376566b7eca579b09fa501ca5e8eb2cb3665c/12.png',
+    winLines: [
+      "Ha! Was there ever any doubt? Didn't think so.",
+      "That's what I'm talking about! Let's gooo!",
+      "Easy work. Come back when you're ready.",
+      "I live for this. W rizz, W game.",
+      "You picked the wrong shawarma. I didn't."
+    ],
+    loseLines: [
+      "Bro… that was literally the worst tile.",
+      "I knew something felt off. I picked it anyway.",
+      "This is embarrassing. Don't tell anyone.",
+      "Rematch. Right now. I'm serious.",
+      "The shawarma was rigged. Has to be."
+    ]
+  },
+  {
+    id: 'jeina', name: 'Lala',
+    selectImg: 'https://raw.githubusercontent.com/bratyface/portfolio/cd9376566b7eca579b09fa501ca5e8eb2cb3665c/14.png',
+    avatarImg: 'https://raw.githubusercontent.com/bratyface/portfolio/bbe9f30f4782db97d5bb755e5f7ce27a837e2ab0/14.png',
+    winLines: [
+      "Did you think I was just here to look cute? Rude.",
+      "Intuition never lies. Mine said win. It was right.",
+      "I felt the safe ones. It's a gift, really.",
+      "You underestimated me. Classic mistake.",
+      "All rights reserved. Victory: mine. ✨"
+    ],
+    loseLines: [
+      "Okay but I still looked good doing it.",
+      "The bomb had chaotic energy. I respect it.",
+      "I chose with my heart. My heart was wrong.",
+      "Not my best round. But my outfit still slaps.",
+      "I demand a rematch. On my terms."
+    ]
+  },
+  {
+    id: 'paul', name: 'Pol',
+    selectImg: 'https://raw.githubusercontent.com/bratyface/portfolio/cd9376566b7eca579b09fa501ca5e8eb2cb3665c/13.png',
+    avatarImg: 'https://raw.githubusercontent.com/bratyface/portfolio/bbe9f30f4782db97d5bb755e5f7ce27a837e2ab0/15.png',
+    winLines: [
+      "Slow and steady. That's the Pol way.",
+      "I just followed my gut. Never steered me wrong.",
+      "Nothing flashy. Just results.",
+      "The quiet ones always win in the end.",
+      "Patience is a weapon. You didn't have it."
+    ],
+    loseLines: [
+      "Huh. Didn't see that one coming.",
+      "I need a minute. Just… a minute.",
+      "The shawarma looked safe. It was not safe.",
+      "My gut betrayed me. We'll have a talk later.",
+      "Everyone loses sometimes. Today was my day."
+    ]
+  },
+  {
+    id: 'nini', name: 'Nini',
+    selectImg: 'https://raw.githubusercontent.com/bratyface/portfolio/bbe9f30f4782db97d5bb755e5f7ce27a837e2ab0/18.png',
+    avatarImg: 'https://raw.githubusercontent.com/bratyface/portfolio/bbe9f30f4782db97d5bb755e5f7ce27a837e2ab0/19.png',
+    winLines: [
+      "Clean choices only. That board never stood a chance.",
+      "I saw the pattern before the first turn even started.",
+      "Cute game. Better winner.",
+      "I stayed calm, and the board folded for me.",
+      "That round had my name on it from the start."
+    ],
+    loseLines: [
+      "That tile had bad vibes. I clicked it anyway.",
+      "No panic. Just a temporary setback.",
+      "I can take the loss, but I am absolutely blaming the board.",
+      "Next round, I am reading every move properly.",
+      "That was rude. Run it back."
+    ]
+  },
+  {
+    id: 'xy', name: 'Xy',
+    selectImg: 'https://raw.githubusercontent.com/bratyface/portfolio/bbe9f30f4782db97d5bb755e5f7ce27a837e2ab0/16.png',
+    avatarImg: 'https://raw.githubusercontent.com/bratyface/portfolio/bbe9f30f4782db97d5bb755e5f7ce27a837e2ab0/17.png',
+    winLines: [
+      "Light work. I was locked in the whole time.",
+      "One by one, every choice landed exactly right.",
+      "I made it look easy because it was.",
+      "Pressure makes me sharper, not slower.",
+      "The board tested me. I passed."
+    ],
+    loseLines: [
+      "That one hurt, not gonna lie.",
+      "I had the read. The board had other plans.",
+      "Messy round. Strong comeback loading.",
+      "I lost this one, but not the next one.",
+      "Let me reset. Then let's go again."
+    ]
+  }
+];
+
+const CHARACTER_SELECT_ORDER = ['aldrin', 'nini', 'khalel', 'xy', 'jeina', 'paul'];
+
+let selectedCharIndex = 0;
+let myCharacter = null;
+
+function initCharSelect(){ updateCharDisplay(); }
+
+function getSelectedCharacter(){
+  const selectedId = CHARACTER_SELECT_ORDER[selectedCharIndex];
+  return CHARACTERS.find(character => character.id === selectedId) || CHARACTERS[0];
+}
+
+function updateCharDisplay(){
+  const c   = getSelectedCharacter();
+  const img = document.getElementById('char-portrait');
+  img.src   = c.selectImg;
+  img.style.animation = 'none';
+  void img.offsetWidth;
+  img.style.animation = '';
+
+  document.getElementById('char-name').textContent = c.name;
+
+  const dotsEl = document.getElementById('char-dots');
+  dotsEl.innerHTML = CHARACTER_SELECT_ORDER.map((_,i) =>
+    `<div class="char-dot${i===selectedCharIndex?' active':''}"></div>`
+  ).join('');
+}
+
+function charMove(dir){
+  selectedCharIndex = (selectedCharIndex + dir + CHARACTER_SELECT_ORDER.length) % CHARACTER_SELECT_ORDER.length;
+  updateCharDisplay();
+}
+
+function confirmChar(){
+  myCharacter = getSelectedCharacter();
+  document.getElementById('lobby-char-img').src = myCharacter.selectImg;
+  showScreen('screen-lobby');
+}
+
+function showCharSelect(){
+  if (myCharacter) {
+    const currentSelectionIndex = CHARACTER_SELECT_ORDER.indexOf(myCharacter.id);
+    if (currentSelectionIndex !== -1) selectedCharIndex = currentSelectionIndex;
+  }
+  showScreen('screen-charselect');
+  updateCharDisplay();
+}
+
+document.addEventListener('dragstart', (event) => {
+  if (event.target instanceof HTMLImageElement) {
+    event.preventDefault();
+  }
+});
+
+window.addEventListener('DOMContentLoaded', initCharSelect);
+</script>
+
+<!-- ════ GAME LOGIC ════ -->
+<script>
+const TOTAL        = 12;
+const BOMBS        = 3;
+const MAX_LIVES    = 3;
+const REVEAL_DELAY = 1200;
+
+const ASSETS = {
+  shawarma:  'https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/2.png',
+  bomb:      'https://raw.githubusercontent.com/bratyface/portfolio/main/3.png',
+  explosion: 'https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/5.png',
+  question:  'https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/6.png',
+  heart:     'https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/8.png',
+  deadHeart: 'https://raw.githubusercontent.com/bratyface/portfolio/8c081662f269ea0d945915d2b77b8129ccb6936a/9.png'
+};
+
+function icon(src, cls='tile-icon', alt=''){
+  return `<img src="${src}" class="${cls}" alt="${alt}" style="image-rendering:pixelated">`;
+}
+
+let myRole    = null, myIndex = null, myName = '';
+let roomCode  = null, roomRef = null, unsubscribe = null;
+let localSetupBombs = [];
+let gridsBuilt = false, revealLock = false, roomClosed = false;
+let lastRenderedStatus = null;
+let lastRenderedLives  = [MAX_LIVES, MAX_LIVES];
+let lastPendingReveal  = { active:false, attacker:null, defender:null, tileIndex:null };
+let lastRenderedTurn   = null;
+let lastGameData       = null;
+let charIndices = [0, 0];
+let bubbleTimers = [null, null];
+let turnPopupTimer = null;
+
+function randCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  return Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+function getEnteredName(def){
+  return document.getElementById('player-name').value.trim().slice(0,10) || def;
+}
+
+function showBubble(playerIdx, emoji){
+  const el = document.getElementById(`p${playerIdx+1}-bubble`);
+  if (!el) return;
+  el.textContent = emoji;
+  el.classList.add('show');
+  if (bubbleTimers[playerIdx]) clearTimeout(bubbleTimers[playerIdx]);
+  bubbleTimers[playerIdx] = setTimeout(() => el.classList.remove('show'), 1100);
+}
+
+function renderReadyChecks(status, playersReady){
+  const shouldShowChecks = status === 'setup' && !playersReady.every(Boolean);
+  document.getElementById('p1-ready-check')?.classList.toggle('show', shouldShowChecks && !!playersReady[0]);
+  document.getElementById('p2-ready-check')?.classList.toggle('show', shouldShowChecks && !!playersReady[1]);
+}
+
+function showTurnPopup(text = 'YOUR TURN'){
+  const popup = document.getElementById('turn-popup');
+  const popupText = document.getElementById('turn-popup-text');
+  if (!popup || !popupText) return;
+
+  popupText.textContent = text;
+  popup.classList.remove('show');
+  void popup.offsetWidth;
+  popup.classList.add('show');
+
+  if (turnPopupTimer) clearTimeout(turnPopupTimer);
+  turnPopupTimer = setTimeout(() => popup.classList.remove('show'), 1000);
+}
+
+function setMegaShawarmaVisible(isVisible){
+  const popup = document.getElementById('mega-shawarma-popup');
+  if (!popup) return;
+
+  popup.classList.toggle('show', !!isVisible);
+  popup.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+
+  const gameBg        = document.getElementById('game-bg-img');
+  const backBtn       = document.getElementById('back-btn');
+  const changeCharBtn = document.getElementById('change-char-btn');
+  const leaveBtn      = document.getElementById('leave-btn');
+
+  if (id === 'screen-game') {
+    document.body.classList.add('game-active');
+    gameBg.style.display        = 'block';
+    backBtn.style.display       = 'none';
+    changeCharBtn.style.display = 'none';
+    leaveBtn.style.display      = 'inline-flex';
+    playBGM('game');
+  } else {
+    document.body.classList.remove('game-active');
+    gameBg.style.display        = 'none';
+    backBtn.style.display       = id === 'screen-charselect' ? 'none' : 'block';
+    changeCharBtn.style.display = (id === 'screen-charselect' || !myCharacter) ? 'none' : 'block';
+    leaveBtn.style.display      = 'none';
+    playBGM('intro');
+  }
+}
+
+function cleanupListener(){
+  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+}
+
+function goLobby(){
+  cleanupListener();
+  localSetupBombs    = [];
+  gridsBuilt         = false;
+  revealLock         = false;
+  roomClosed         = false;
+  lastRenderedStatus = null;
+  lastRenderedLives  = [MAX_LIVES, MAX_LIVES];
+  lastPendingReveal  = { active:false, attacker:null, defender:null, tileIndex:null };
+  lastRenderedTurn   = null;
+  lastGameData       = null;
+  if (turnPopupTimer) clearTimeout(turnPopupTimer);
+  document.getElementById('turn-popup')?.classList.remove('show');
+  setMegaShawarmaVisible(false);
+  closeStats();
+  document.getElementById('end-overlay').classList.remove('active');
+  showScreen('screen-lobby');
+}
+
+function structuredCloneSafe(obj){ return JSON.parse(JSON.stringify(obj)); }
+
+async function leaveMatch(){
+  if (!roomRef || roomClosed) { goLobby(); return; }
+  if (!window.confirm('Leave the match? This will end the game for both players.')) return;
+  roomClosed = true;
+  try {
+    const snap = await roomRef.get();
+    const data  = snap.data();
+    if (data && data.status !== 'over') {
+      await roomRef.update({
+        status:'over', winner: myIndex===0 ? 1 : 0,
+        reason:`${myName||'A player'} left the match.`,
+        pendingReveal:{ active:false, attacker:null, defender:null, tileIndex:null }
+      });
+    }
+  } catch(_){}
+  goLobby();
+}
+
+function heartsHTML(lives){
+  let h = '';
+  for (let i=0;i<MAX_LIVES;i++)
+    h += `<img src="${i<lives?ASSETS.heart:ASSETS.deadHeart}" class="heart-icon" alt="heart">`;
+  return h;
+}
+
+// ── CREATE ──────────────────────────────
+async function showCreate(){
+  if (!myCharacter) { alert('Please select a character first!'); showCharSelect(); return; }
+  myName = getEnteredName('Player 1');
+  myRole = 'host'; myIndex = 0;
+  showScreen('screen-create');
+  document.getElementById('display-code').textContent = '----';
+  document.getElementById('qr-container').innerHTML   = '';
+
+  roomCode = randCode();
+  roomRef  = db.collection('rooms').doc(roomCode);
+
+  await roomRef.set({
+    status:'waiting', currentTurn:0, winner:null, reason:'',
+    names:[myName, null],
+    scores:[0,0], lives:[MAX_LIVES,MAX_LIVES],
+    playersReady:[false,false], hoverTile:[null,null],
+    charIndices:[ CHARACTERS.indexOf(myCharacter), 0 ],
+    pendingReveal:{ active:false, attacker:null, defender:null, tileIndex:null },
+    boards:[
+      { bombs:[], revealed:Array(TOTAL).fill(false) },
+      { bombs:[], revealed:Array(TOTAL).fill(false) }
+    ]
+  });
+
+  document.getElementById('display-code').textContent = roomCode;
+
+  const url = `${location.href.split('?')[0]}?join=${roomCode}`;
+  new QRCode(document.getElementById('qr-container'), {
+    text:url, width:160, height:160, colorDark:'#e8a020', colorLight:'#0e0802'
+  });
+
+  cleanupListener();
+  unsubscribe = roomRef.onSnapshot(snap => {
+    const data = snap.data();
+    if (!data) return;
+    if (['setup','playing','over'].includes(data.status)) { cleanupListener(); startGame(); }
+  });
+}
+
+// ── JOIN ────────────────────────────────
+function showJoin(){
+  showScreen('screen-join');
+  const code = new URLSearchParams(location.search).get('join');
+  if (code) document.getElementById('join-input').value = code.toUpperCase();
+}
+
+async function joinGame(){
+  if (!myCharacter) { alert('Please select a character first!'); showCharSelect(); return; }
+  myName = getEnteredName('Player 2');
+  const code  = document.getElementById('join-input').value.trim().toUpperCase();
+  const errEl = document.getElementById('join-error');
+  errEl.textContent = '';
+  if (code.length !== 4) { errEl.textContent = 'Code must be 4 letters.'; return; }
+
+  const ref  = db.collection('rooms').doc(code);
+  const snap = await ref.get();
+  if (!snap.exists)              { errEl.textContent = 'Room not found.'; return; }
+  if (snap.data().status !== 'waiting') { errEl.textContent = 'Room already in use.'; return; }
+
+  myRole='guest'; myIndex=1; roomCode=code; roomRef=ref;
+
+  const names = [...(snap.data().names||[null,null])];
+  names[1] = myName;
+  const ci  = [...(snap.data().charIndices||[0,0])];
+  ci[1] = CHARACTERS.indexOf(myCharacter);
+
+  await roomRef.update({ names, charIndices:ci, status:'setup' });
+  startGame();
+}
+
+// ── START ────────────────────────────────
+function startGame(){
+  showScreen('screen-game');
+  document.getElementById('game-room-label').textContent = `Room: ${roomCode}`;
+  if (!gridsBuilt) { buildGrids(); gridsBuilt = true; }
+  cleanupListener();
+  unsubscribe = roomRef.onSnapshot(snap => {
+    const data = snap.data();
+    if (!data) return;
+    renderGame(data);
+  });
+}
+
+function buildGrids(){
+  ['my-grid','opp-grid'].forEach(id => document.getElementById(id).innerHTML = '');
+  for (let i=0; i<TOTAL; i++) {
+    const mt = document.createElement('div');
+    mt.className = 'tile'; mt.id = `my-tile-${i}`;
+    mt.innerHTML = icon(ASSETS.shawarma);
+    mt.addEventListener('click', () => onMyBoardClick(i));
+    document.getElementById('my-grid').appendChild(mt);
+
+    const ot = document.createElement('div');
+    ot.className = 'tile'; ot.id = `opp-tile-${i}`;
+    ot.innerHTML = icon(ASSETS.question);
+    ot.addEventListener('click',      () => onOpponentBoardClick(i));
+    ot.addEventListener('mouseenter', () => setHoverTile(i));
+    ot.addEventListener('mouseleave', () => setHoverTile(null));
+    document.getElementById('opp-grid').appendChild(ot);
+  }
+}
+
+async function setHoverTile(index){
+  if (!roomRef) return;
+  const snap = await roomRef.get();
+  const data  = snap.data();
+  if (!data || data.status !== 'playing') return;
+  if (data.currentTurn !== myIndex || revealLock) return;
+  const ht = [...(data.hoverTile||[null,null])];
+  if (ht[myIndex] === index) return;
+  ht[myIndex] = index;
+  await roomRef.update({ hoverTile:ht });
+}
+
+// ── RENDER ───────────────────────────────
+function renderGame(data){
+  const names         = data.names         || ['Player 1','Player 2'];
+  const scores        = data.scores        || [0,0];
+  const lives         = data.lives         || [MAX_LIVES,MAX_LIVES];
+  const playersReady  = data.playersReady  || [false,false];
+  const hoverTile     = data.hoverTile     || [null,null];
+  const pendingReveal = data.pendingReveal || { active:false, attacker:null, defender:null, tileIndex:null };
+  const boards        = data.boards        || [
+    { bombs:[], revealed:Array(TOTAL).fill(false) },
+    { bombs:[], revealed:Array(TOTAL).fill(false) }
+  ];
+  charIndices = data.charIndices || [0,0];
+
+  const oppIndex = myIndex === 0 ? 1 : 0;
+  const myBoard  = boards[myIndex];
+  const oppBoard = boards[oppIndex];
+
+  if (data.status === 'setup' && !playersReady[myIndex]) {
+    localSetupBombs = [...(myBoard.bombs || [])];
+  }
+
+  document.getElementById('p1-avatar').src = (CHARACTERS[charIndices[0]]||CHARACTERS[0]).avatarImg;
+  document.getElementById('p2-avatar').src = (CHARACTERS[charIndices[1]]||CHARACTERS[0]).avatarImg;
+
+  // Use the player's chosen name (not the character name)
+  document.getElementById('p1-name').textContent  = names[0] || 'PLAYER 1';
+  document.getElementById('p2-name').textContent  = names[1] || 'PLAYER 2';
+  document.getElementById('p1-hearts').innerHTML  = heartsHTML(lives[0]);
+  document.getElementById('p2-hearts').innerHTML  = heartsHTML(lives[1]);
+  document.getElementById('p1-score').textContent = `Safe: ${scores[0]}`;
+  document.getElementById('p2-score').textContent = `Safe: ${scores[1]}`;
+  renderReadyChecks(data.status, playersReady);
+
+  const revealJustDone  = lastPendingReveal.active && !pendingReveal.active;
+  const revealJustStart = pendingReveal.active && !lastPendingReveal.active;
+
+  if (revealJustStart) playSFX('countdown');
+
+  if (revealJustDone) {
+    const attackerIdx = lastPendingReveal.attacker;
+    const defenderIdx = lastPendingReveal.defender;
+    const hitBomb     = boards[defenderIdx]?.bombs?.includes(lastPendingReveal.tileIndex);
+    if (hitBomb) {
+      playSFX('damaged');
+      showBubble(attackerIdx, '😵');
+      showBubble(defenderIdx, '😤');
+    } else {
+      showBubble(attackerIdx, '😌');
+    }
+  }
+
+  for (let p=0; p<2; p++) {
+    if (lives[p] < lastRenderedLives[p]) showBubble(p, '💔');
+  }
+
+  if (data.status === 'over' && lastRenderedStatus && lastRenderedStatus !== 'over') {
+    playSFX(data.winner === myIndex ? 'win' : 'lose');
+  }
+
+  document.getElementById('p1-card').classList.toggle('active-turn', data.status==='playing' && data.currentTurn===0);
+  document.getElementById('p2-card').classList.toggle('active-turn', data.status==='playing' && data.currentTurn===1);
+
+  document.getElementById('my-board-title').textContent  = `${names[myIndex]  ||'YOU'} — YOUR BOARD`;
+  document.getElementById('opp-board-title').textContent = `${names[oppIndex] ||'OPPONENT'} — OPP BOARD`;
+
+  const readyBtn   = document.getElementById('ready-btn');
+  const turnBanner = document.getElementById('turn-banner');
+  const isMyTurnNow = data.status === 'playing' && data.currentTurn === myIndex && !pendingReveal.active;
+
+  if (isMyTurnNow && (lastRenderedStatus !== 'playing' || lastRenderedTurn !== myIndex || lastPendingReveal.active)) {
+    showTurnPopup('YOUR TURN');
+  }
+
+  if (data.status === 'setup') {
+    const myReady   = playersReady[myIndex];
+    const bombCount = myReady ? myBoard.bombs.length : localSetupBombs.length;
+    readyBtn.style.display = myReady ? 'none' : 'block';
+    readyBtn.innerHTML = bombCount === BOMBS
+      ? `${icon(ASSETS.shawarma,'tile-icon')} Lock In Bombs`
+      : `Pick ${BOMBS-bombCount} more bomb${BOMBS-bombCount===1?'':'s'}`;
+    document.getElementById('my-board-sub').textContent  = myReady ? 'Your bombs are locked in.' : `Place exactly ${BOMBS} bombs.`;
+    document.getElementById('opp-board-sub').textContent = playersReady[oppIndex] ? 'Opponent is ready.' : 'Waiting for opponent…';
+    turnBanner.style.color = 'var(--gold2)';
+    turnBanner.textContent = playersReady.every(Boolean) ? 'Starting game…' : myReady ? 'Bombs set. Waiting for opponent…' : 'Secret setup — place your 3 bombs';
+  } else if (data.status === 'playing') {
+    readyBtn.style.display = 'none';
+    document.getElementById('my-board-sub').textContent  = 'Your bombs stay hidden.';
+    document.getElementById('opp-board-sub').textContent = pendingReveal.active ? 'Checking a plate…' : 'Attack the opponent board.';
+    const isMyTurn = data.currentTurn === myIndex;
+    const turnName = names[data.currentTurn] || `Player ${data.currentTurn+1}`;
+    turnBanner.style.color = data.currentTurn === 0 ? 'var(--p1)' : 'var(--p2)';
+    turnBanner.textContent = pendingReveal.active
+      ? `Checking… ${names[pendingReveal.attacker]||'P'} picked a shawarma`
+      : isMyTurn ? `YOUR TURN — pick from ${names[oppIndex]||'opponent'}'s board`
+                 : `${turnName}'s turn…`;
+  } else {
+    readyBtn.style.display = 'none';
+    document.getElementById('my-board-sub').textContent  = 'Round finished.';
+    document.getElementById('opp-board-sub').textContent = 'Round finished.';
+  }
+
+  renderMyBoard(myBoard, data.status, playersReady[myIndex]);
+  renderOpponentBoard(oppBoard, data.status, data.currentTurn, hoverTile[oppIndex], pendingReveal, oppIndex);
+
+  const gameDataSnapshot = structuredCloneSafe(data);
+  lastGameData = gameDataSnapshot;
+
+  if (data.status === 'over') showEndScreen(data.winner, data.reason, names, scores, lives, gameDataSnapshot);
+
+  lastRenderedStatus = data.status;
+  lastRenderedLives  = [...lives];
+  lastPendingReveal  = { ...pendingReveal };
+  lastRenderedTurn   = data.currentTurn;
+}
+
+function renderMyBoard(myBoard, status, myReady){
+  for (let i=0; i<TOTAL; i++) {
+    const tile = document.getElementById(`my-tile-${i}`);
+    if (!tile) continue;
+    const isBombSaved = myBoard.bombs.includes(i);
+    const isBombLocal = localSetupBombs.includes(i);
+    const isRevealed  = myBoard.revealed[i];
+    tile.className = 'tile';
+
+    if (status==='setup' && !myReady) {
+      tile.innerHTML = isBombLocal ? icon(ASSETS.bomb) : icon(ASSETS.shawarma);
+      continue;
+    }
+    if (status==='setup' && myReady) {
+      tile.classList.add('disabled');
+      tile.innerHTML = isBombSaved ? icon(ASSETS.bomb) : icon(ASSETS.shawarma);
+      continue;
+    }
+    if (status==='playing'||status==='over') {
+      if (isRevealed && isBombSaved)    { tile.classList.add('revealed-bomb'); tile.innerHTML = icon(ASSETS.explosion); }
+      else if (isBombSaved)             { tile.innerHTML = icon(ASSETS.bomb); }
+      else if (isRevealed)              { tile.classList.add('revealed-safe','revealed-safe-owned'); tile.innerHTML = icon(ASSETS.shawarma); }
+      else                              { tile.classList.add('disabled'); tile.innerHTML = icon(ASSETS.shawarma); }
+    }
+  }
+}
+
+function renderOpponentBoard(oppBoard, status, currentTurn, oppHoverIdx, pendingReveal, oppIndex){
+  const isMyTurn = status==='playing' && currentTurn===myIndex && !pendingReveal.active;
+  for (let i=0; i<TOTAL; i++) {
+    const tile = document.getElementById(`opp-tile-${i}`);
+    if (!tile) continue;
+    const isRevealed    = oppBoard.revealed[i];
+    const isBomb        = oppBoard.bombs.includes(i);
+    const isOppHovering = oppHoverIdx === i;
+    const isPending     = pendingReveal.active && pendingReveal.defender===oppIndex && pendingReveal.tileIndex===i;
+    tile.className = 'tile';
+
+    if (status==='setup')  { tile.classList.add('disabled'); tile.innerHTML=icon(ASSETS.question); continue; }
+    if (isPending)         { tile.classList.add('picking','disabled'); tile.innerHTML=icon(ASSETS.question); continue; }
+    if (isRevealed) {
+      tile.classList.add(isBomb?'revealed-bomb':'revealed-safe');
+      tile.innerHTML = isBomb ? icon(ASSETS.explosion) : icon(ASSETS.shawarma);
+    } else {
+      tile.innerHTML = icon(ASSETS.question);
+      if (isOppHovering) tile.classList.add('picking');
+      if (!isMyTurn)     tile.classList.add('disabled');
+    }
+  }
+}
+
+async function onMyBoardClick(index){
+  const snap = await roomRef.get();
+  const data = snap.data();
+  if (!data || data.status!=='setup') return;
+  if ((data.playersReady||[])[myIndex]) return;
+
+  if (localSetupBombs.includes(index)) {
+    localSetupBombs = localSetupBombs.filter(i => i!==index);
+  } else {
+    if (localSetupBombs.length >= BOMBS) return;
+    localSetupBombs.push(index);
+  }
+
+  const boards = structuredCloneSafe(data.boards);
+  boards[myIndex].bombs = [...localSetupBombs];
+  boards[myIndex].revealed = Array(TOTAL).fill(false);
+
+  renderGame({ ...data, boards });
+  await roomRef.update({ boards });
+}
+
+async function confirmBombs(){
+  const snap = await roomRef.get();
+  const data  = snap.data();
+  if (!data || data.status!=='setup') return;
+  if (localSetupBombs.length !== BOMBS) return;
+  const boards       = structuredCloneSafe(data.boards);
+  const playersReady = [...data.playersReady];
+  boards[myIndex].bombs    = [...localSetupBombs];
+  boards[myIndex].revealed = Array(TOTAL).fill(false);
+  playersReady[myIndex]    = true;
+  const updates = { boards, playersReady };
+  if (playersReady[0] && playersReady[1]) { updates.status='playing'; updates.currentTurn=0; }
+  await roomRef.update(updates);
+}
+
+async function onOpponentBoardClick(index){
+  if (revealLock) return;
+  const snap = await roomRef.get();
+  const data  = snap.data();
+  if (!data || data.status!=='playing') return;
+  if (data.currentTurn !== myIndex) return;
+  if (data.pendingReveal && data.pendingReveal.active) return;
+  const opponentIndex = myIndex===0 ? 1 : 0;
+  const boards = structuredCloneSafe(data.boards);
+  if (boards[opponentIndex].revealed[index]) return;
+  revealLock = true;
+  const ht = [...(data.hoverTile||[null,null])];
+  ht[myIndex] = null;
+  await roomRef.update({
+    hoverTile:ht,
+    pendingReveal:{ active:true, attacker:myIndex, defender:opponentIndex, tileIndex:index }
+  });
+  setTimeout(async () => {
+    const snap2  = await roomRef.get();
+    const current = snap2.data();
+    if (!current || current.status!=='playing') { revealLock=false; return; }
+    const currentBoards = structuredCloneSafe(current.boards);
+    const currentScores = [...current.scores];
+    const currentLives  = [...current.lives];
+    const currentHover  = [...(current.hoverTile||[null,null])];
+    const targetBoard   = currentBoards[opponentIndex];
+    if (targetBoard.revealed[index]) { revealLock=false; return; }
+    targetBoard.revealed[index] = true;
+    currentHover[myIndex] = null;
+    const hitBomb = targetBoard.bombs.includes(index);
+    if (hitBomb) {
+      playSFX('bomb');
+      currentLives[myIndex] -= 1;
+      const base = { boards:currentBoards, lives:currentLives, hoverTile:currentHover, pendingReveal:{ active:false, attacker:null, defender:null, tileIndex:null } };
+      if (currentLives[myIndex] <= 0) {
+        await roomRef.update({ ...base, winner:opponentIndex, status:'over', reason:`${current.names[myIndex]||'Player'} lost all 3 hearts.` });
+      } else {
+        await roomRef.update({ ...base, currentTurn:opponentIndex, reason:`${current.names[myIndex]||'Player'} hit a bomb!` });
+      }
+    } else {
+      playSFX('safe');
+      currentScores[myIndex] += 1;
+      await roomRef.update({
+        boards:currentBoards, scores:currentScores, hoverTile:currentHover,
+        pendingReveal:{ active:false, attacker:null, defender:null, tileIndex:null },
+        currentTurn:opponentIndex,
+        reason:`${current.names[myIndex]||'Player'} found a safe shawarma!`
+      });
+    }
+    revealLock = false;
+  }, REVEAL_DELAY);
+}
+
+// ── END SCREEN ───────────────────────────
+function showEndScreen(winner, reason, names, scores, lives, gameData = lastGameData){
+  document.getElementById('end-overlay').classList.add('active');
+  playBGM('intro');
+
+  setMegaShawarmaVisible(false);
+
+  let titleText = 'GAME OVER', titleColor = 'var(--gold2)';
+  if (winner === -1) {
+    titleText = "IT'S A DRAW!";
+  } else {
+    const iWin = winner === myIndex;
+    titleText  = iWin ? 'YOU WON THE MEGA SHAWARMA!' : 'YOU LOSE!';
+    titleColor = iWin ? '#6ddb82' : '#ff6666';
+    setMegaShawarmaVisible(iWin);
+  }
+  document.getElementById('end-title').textContent = titleText;
+  document.getElementById('end-title').style.color  = titleColor;
+  document.getElementById('end-score').textContent  =
+    `${names[0]||'P1'}: ${scores[0]} safe, ${lives[0]} hearts  ·  ${names[1]||'P2'}: ${scores[1]} safe, ${lives[1]} hearts`;
+  document.getElementById('end-reason').textContent = reason;
+
+  const p1Char = CHARACTERS[charIndices[0]] || CHARACTERS[0];
+  const p2Char = CHARACTERS[charIndices[1]] || CHARACTERS[0];
+
+  // Show player names (not character names) under portraits
+  document.getElementById('end-char-row').innerHTML = `
+    <div class="end-char-box">
+      <img src="${p1Char.avatarImg}" alt="">
+      <span class="end-char-name">${names[0]||'P1'}</span>
+    </div>
+    <div class="end-char-box">
+      <img src="${p2Char.avatarImg}" alt="">
+      <span class="end-char-name">${names[1]||'P2'}</span>
+    </div>
+  `;
+
+  // Quote: spoken by winner's CHARACTER, but addressed using the player's NAME
+  let speakingChar, playerName;
+  if (winner === -1) {
+    speakingChar = myCharacter || CHARACTERS[charIndices[myIndex]] || CHARACTERS[0];
+    playerName   = names[myIndex] || 'you';
+  } else {
+    speakingChar = CHARACTERS[charIndices[winner]] || CHARACTERS[0];
+    playerName   = names[winner] || 'you';
+  }
+
+  let quote;
+  if (winner === -1) {
+    quote = "A draw… we're more alike than I thought.";
+  } else {
+    const isWinner = winner === myIndex;
+    const lines    = isWinner ? speakingChar.winLines : speakingChar.loseLines;
+    quote = lines[Math.floor(Math.random() * lines.length)];
+  }
+
+  // Use the player's chosen name as the speaker label (not the character ID)
+  document.getElementById('end-chat-bubble').innerHTML =
+    `<strong>${playerName}:</strong> "${quote}"`;
+
+  buildStatsOverlay(gameData, winner, names, scores, lives);
+}
+
+function buildStatsOverlay(gameData, winner, names, scores, lives) {
+  const data = gameData || lastGameData || {};
+  const boards = data.boards || [
+    { bombs:[], revealed:Array(TOTAL).fill(false) },
+    { bombs:[], revealed:Array(TOTAL).fill(false) }
+  ];
+
+  const n0 = names[0] || 'P1';
+  const n1 = names[1] || 'P2';
+
+  const p0revealedOnOpp = boards[1].revealed.filter(Boolean).length;
+  const p1revealedOnOpp = boards[0].revealed.filter(Boolean).length;
+
+  const p0bombsHit = boards[1].revealed.reduce((acc, rev, i) => acc + (rev && boards[1].bombs.includes(i) ? 1 : 0), 0);
+  const p1bombsHit = boards[0].revealed.reduce((acc, rev, i) => acc + (rev && boards[0].bombs.includes(i) ? 1 : 0), 0);
+
+  const p0safePicks = scores[0];
+  const p1safePicks = scores[1];
+  const totalRevealed = p0revealedOnOpp + p1revealedOnOpp;
+
+  function pSafe(bombsLeft, tilesLeft) {
+    if (tilesLeft <= 0) return 0;
+    return Math.max(0, (tilesLeft - bombsLeft) / tilesLeft);
+  }
+
+  function pBomb(bombsLeft, tilesLeft) {
+    if (tilesLeft <= 0) return 0;
+    return Math.min(1, bombsLeft / tilesLeft);
+  }
+
+  const pct = (v) => `${(v * 100).toFixed(1)}%`;
+
+  const html = `
+  <div class="stats-section-title">1 - THEORETICAL PROBABILITY (FIXED)</div>
+  <table class="prob-table">
+    <thead>
+      <tr>
+        <th>Outcome</th>
+        <th>Number of Plates</th>
+        <th>Probability</th>
+        <th>Percentage</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="label-cell">Bomb 💣</td>
+        <td>3</td>
+        <td>3/12</td>
+        <td class="lose-cell">25%</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Safe 🌯</td>
+        <td>9</td>
+        <td>9/12</td>
+        <td class="win-cell">75%</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Total</td>
+        <td>12</td>
+        <td>12/12</td>
+        <td class="highlight">100%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="stats-section-title">2 - EXPERIMENTAL RESULTS (FROM GAME)</div>
+  <table class="prob-table">
+    <thead>
+      <tr>
+        <th>Player</th>
+        <th>Picks Made</th>
+        <th>Safe Picks</th>
+        <th>Bombs Hit</th>
+        <th>Hit Rate</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="label-cell" style="color:var(--p1)">${n0}</td>
+        <td>${p0revealedOnOpp}</td>
+        <td class="win-cell">${p0safePicks}</td>
+        <td class="lose-cell">${p0bombsHit}</td>
+        <td class="${p0bombsHit > 0 ? 'lose-cell' : 'win-cell'}">${p0revealedOnOpp > 0 ? pct(p0bombsHit / p0revealedOnOpp) : '-'}</td>
+      </tr>
+      <tr>
+        <td class="label-cell" style="color:var(--p2)">${n1}</td>
+        <td>${p1revealedOnOpp}</td>
+        <td class="win-cell">${p1safePicks}</td>
+        <td class="lose-cell">${p1bombsHit}</td>
+        <td class="${p1bombsHit > 0 ? 'lose-cell' : 'win-cell'}">${p1revealedOnOpp > 0 ? pct(p1bombsHit / p1revealedOnOpp) : '-'}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Combined</td>
+        <td>${totalRevealed}</td>
+        <td class="win-cell">${p0safePicks + p1safePicks}</td>
+        <td class="lose-cell">${p0bombsHit + p1bombsHit}</td>
+        <td>${totalRevealed > 0 ? pct((p0bombsHit + p1bombsHit) / totalRevealed) : '-'}</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="stats-note">
+    The experimental bomb rate (40%) differs from the theoretical 25% due to randomness and the small number of trials.
+  </div>
+
+  <div class="stats-section-title">3 - CHANGING PROBABILITY (MODEL / EXAMPLE)</div>
+  <div class="stats-note" style="margin-top:0; margin-bottom:10px;">
+    Assuming Previous Picks Were Safe
+  </div>
+  <table class="prob-table">
+    <thead>
+      <tr>
+        <th>Situation</th>
+        <th>Bombs Left</th>
+        <th>Plates Left</th>
+        <th>Probability of Bomb</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="label-cell">Start</td>
+        <td>3</td>
+        <td>12</td>
+        <td class="lose-cell">3/12 = 25%</td>
+      </tr>
+      <tr>
+        <td class="label-cell">After 1 safe pick</td>
+        <td>3</td>
+        <td>11</td>
+        <td class="lose-cell">3/11 ≈ 27.3%</td>
+      </tr>
+      <tr>
+        <td class="label-cell">After 3 safe picks</td>
+        <td>3</td>
+        <td>9</td>
+        <td class="lose-cell">3/9 = 33.3%</td>
+      </tr>
+      <tr>
+        <td class="label-cell">After 5 safe picks</td>
+        <td>3</td>
+        <td>7</td>
+        <td class="lose-cell">3/7 ≈ 42.9%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="stats-section-title">4 - EXPECTED VALUE (FIXED)</div>
+  <table class="prob-table">
+    <thead>
+      <tr>
+        <th>Outcome</th>
+        <th>Value</th>
+        <th>Probability</th>
+        <th>Contribution</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="label-cell">Safe 🌯</td>
+        <td class="win-cell">+1</td>
+        <td>0.75</td>
+        <td class="win-cell">+0.75</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Bomb 💣</td>
+        <td class="lose-cell">-1</td>
+        <td>0.25</td>
+        <td class="lose-cell">-0.25</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="stats-note" style="margin-top:10px;">
+    Expected Value per turn = 0.5
+  </div>
+  `;
+
+  const statsContent = document.getElementById('stats-content');
+  if (statsContent) statsContent.innerHTML = html;
+}
+
+function openStats() {
+  document.getElementById('stats-overlay')?.classList.add('active');
+  const overlay = document.getElementById('stats-overlay');
+  if (overlay) overlay.scrollTop = 0;
+}
+
+function closeStats() {
+  document.getElementById('stats-overlay')?.classList.remove('active');
+}
+
+window.addEventListener('load', () => {
+  const code = new URLSearchParams(location.search).get('join');
+  if (code) showJoin();
+});
+</script>
+</body>
+</html>
